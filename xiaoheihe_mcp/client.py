@@ -10,6 +10,7 @@ import httpx
 from .config import XiaoheiheConfig
 from .native_signer import NativeSigner
 from .secure_phone import encrypt_phone
+from .signer import sign_web_request
 
 
 class XiaoheiheError(Exception):
@@ -42,17 +43,6 @@ class XiaoheiheClient:
             await self._client.aclose()
             self._client = None
 
-    def _web_query(self) -> dict[str, str]:
-        return {
-            "os_type": "web",
-            "app": "heybox",
-            "x_client_type": "weboutapp",
-            "x_client_version": "",
-            "x_os_type": "Windows",
-            "x_app": "heybox",
-            "heybox_id": self.config.heybox_id,
-        }
-
     async def get(self, path: str, query: dict[str, Any] | None = None) -> dict[str, Any]:
         if not self._client:
             raise RuntimeError("XiaoheiheClient should be used as an async context manager")
@@ -78,9 +68,27 @@ class XiaoheiheClient:
                 headers.pop("Referer", None)
                 headers.pop("Origin", None)
             except (OSError, subprocess.SubprocessError, RuntimeError):
-                base_query = self._web_query()
+                base_query = {
+                    "os_type": "web",
+                    "app": "heybox",
+                    "x_client_type": "weboutapp",
+                    "x_client_version": "",
+                    "x_os_type": "Windows",
+                    "x_app": "heybox",
+                    "heybox_id": self.config.heybox_id,
+                    **sign_web_request(path),
+                }
         else:
-            base_query = self._web_query()
+            base_query = {
+                "os_type": "web",
+                "app": "heybox",
+                "x_client_type": "weboutapp",
+                "x_client_version": "",
+                "x_os_type": "Windows",
+                "x_app": "heybox",
+                "heybox_id": self.config.heybox_id,
+                **sign_web_request(path),
+            }
         response = await self._client.get(
             self.config.api_base + path,
             params={**base_query, **clean_query},
@@ -121,7 +129,7 @@ class XiaoheiheClient:
             except (OSError, subprocess.SubprocessError, RuntimeError) as error:
                 raise XiaoheiheError(f"原生签名不可用：{error}") from error
         else:
-            raise XiaoheiheError("登录接口需要签名器，请配置 XIAOHEIHE_SIGNER_COMMAND")
+            raise XiaoheiheError("登录接口需要原生签名，请先编译 native signer")
 
         response = await self._client.post(
             self.config.api_base + path,
@@ -372,6 +380,26 @@ class XiaoheiheClient:
                 "top_comment_id": top_comment_id,
             },
         )
+        return self.result(payload)
+
+    async def sign_status(self) -> dict[str, Any]:
+        """Check daily sign-in state (waiting/ok + reward info)."""
+        payload = await self.get("/task/sign_v4/get_sign_state")
+        return self.result(payload)
+
+    async def sign(self) -> dict[str, Any]:
+        """Perform daily sign-in."""
+        payload = await self.get("/task/sign_v3/sign")
+        return self.result(payload)
+
+    async def sign_list(self) -> dict[str, Any]:
+        """Get monthly sign-in calendar."""
+        payload = await self.get("/task/sign_list/")
+        return self.result(payload)
+
+    async def task_list(self) -> dict[str, Any]:
+        """Get daily task list with completion state."""
+        payload = await self.get("/task/list_v2/")
         return self.result(payload)
 
     async def account_home(self) -> dict[str, Any]:
