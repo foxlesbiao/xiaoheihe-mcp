@@ -10,7 +10,6 @@ import stat
 
 CONFIG_DIR = Path.home() / ".xiaoheihe-mcp"
 CONFIG_FILE = CONFIG_DIR / "config.json"
-DEFAULT_NATIVE_BUNDLE = "~/.xhh_sdk/bundles"
 
 
 class XiaoheiheConfig:
@@ -27,9 +26,7 @@ class XiaoheiheConfig:
         )
         self.app_version = "1.3.398"
         self.build = "1142"
-        self.native_bundle = DEFAULT_NATIVE_BUNDLE
-        self.native_classes = ""
-        self.native_java = "/usr/lib/jvm/java-21-openjdk-amd64/bin/java"
+        self.signer_command = ""
         self.native_signer = True
         self.native_identity = "123"
         self.native_imei = ""
@@ -49,9 +46,7 @@ class XiaoheiheConfig:
         self.user_agent = os.getenv("XIAOHEIHE_USER_AGENT", self.user_agent)
         self.app_version = os.getenv("XIAOHEIHE_APP_VERSION", self.app_version)
         self.build = os.getenv("XIAOHEIHE_BUILD", self.build)
-        self.native_bundle = os.getenv("XIAOHEIHE_NATIVE_BUNDLE", self.native_bundle)
-        self.native_classes = os.getenv("XIAOHEIHE_NATIVE_CLASSES", self.native_classes)
-        self.native_java = os.getenv("XIAOHEIHE_NATIVE_JAVA", self.native_java)
+        self.signer_command = os.getenv("XIAOHEIHE_SIGNER_COMMAND", self.signer_command)
         native_signer = os.getenv("XIAOHEIHE_NATIVE_SIGNER")
         if native_signer is not None:
             self.native_signer = native_signer.lower() not in {"0", "false", "no"}
@@ -91,9 +86,7 @@ class XiaoheiheConfig:
         self.user_agent = data.get("user_agent", self.user_agent)
         self.app_version = str(data.get("app_version", self.app_version))
         self.build = str(data.get("build", self.build))
-        self.native_bundle = str(data.get("native_bundle", self.native_bundle))
-        self.native_classes = str(data.get("native_classes", self.native_classes))
-        self.native_java = str(data.get("native_java", self.native_java))
+        self.signer_command = str(data.get("signer_command", self.signer_command))
         self.native_signer = bool(data.get("native_signer", self.native_signer))
         self.native_identity = str(data.get("native_identity", self.native_identity))
         self.native_imei = str(data.get("native_imei", self.native_imei))

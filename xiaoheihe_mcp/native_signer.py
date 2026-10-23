@@ -1,65 +1,36 @@
-"""Native Android request signer using the local Unidbg research bundle."""
+"""External signer caller. The signing algorithm is not included in this repository."""
 
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
-from pathlib import Path
 from typing import Any
 
 from .config import XiaoheiheConfig
 
-DEFAULT_IDENTITY = "123"
-DEFAULT_IMEI = "0123456789abcdef"
-
 
 class NativeSigner:
+    """Calls a user-provided external signer command to generate request signatures."""
+
     def __init__(self, config: XiaoheiheConfig | None = None) -> None:
         self.config = config or XiaoheiheConfig()
-        self.bundle = self._resolve_bundle()
-        self.resources = self.bundle / "resources"
-        self.classes = (
-            Path(self.config.native_classes).expanduser()
-            if self.config.native_classes
-            else Path(__file__).parent.parent / "native" / "classes"
-        )
-        self.java = self.config.native_java
+        self.command = self.config.signer_command
         self.enabled = self.config.native_signer
         self.identity = self.config.native_identity
         self.imei = self.config.native_imei
         self.device = self.config.native_device
         self.os_version = self.config.native_os_version
 
-    def _resolve_bundle(self) -> Path:
-        bundle = Path(self.config.native_bundle).expanduser()
-        if (bundle / "resources" / "minimal-app.apk").is_file():
-            return bundle
-        if bundle.name != "bundles":
-            return bundle
-        candidates = [
-            item
-            for item in bundle.iterdir()
-            if item.is_dir()
-            and (item / "resources" / "minimal-app.apk").is_file()
-            and (item / "loader.jar").is_file()
-        ]
-        return sorted(candidates)[0] if candidates else bundle
-
     @property
     def available(self) -> bool:
-        return self.enabled and (self.resources / "minimal-app.apk").is_file() and (
-            self.classes / "com/xiaoheihe/XiaoheiheNativeSigner.class"
-        ).is_file()
+        return self.enabled and bool(self.command) and shutil.which(self.command) is not None
 
     def sign(self, path: str, identity: str | None = None) -> dict[str, str]:
         if not self.available:
-            raise RuntimeError("native signer is unavailable")
+            raise RuntimeError("external signer is not configured or not found")
         command = [
-            self.java,
-            "-cp",
-            f"{self.bundle / 'loader.jar'}:{self.bundle / 'deps'}/*:{self.classes}",
-            "com.xiaoheihe.XiaoheiheNativeSigner",
-            str(self.resources),
+            self.command,
             path,
             "",
             identity or self.identity,
@@ -80,13 +51,13 @@ class NativeSigner:
         )
         if process.returncode != 0:
             detail = process.stderr.strip() or process.stdout.strip()
-            raise RuntimeError(f"native signer failed: {detail}")
+            raise RuntimeError(f"external signer failed: {detail}")
         try:
             payload: Any = json.loads(process.stdout.strip().splitlines()[-1])
         except (ValueError, IndexError) as error:
-            raise RuntimeError("native signer returned invalid output") from error
+            raise RuntimeError("external signer returned invalid output") from error
         if not isinstance(payload, dict):
-            raise RuntimeError("native signer returned unexpected output")
+            raise RuntimeError("external signer returned unexpected output")
         return {key: str(value) for key, value in payload.items()}
 
     def base_query(self, identity: str | None = None) -> dict[str, str]:

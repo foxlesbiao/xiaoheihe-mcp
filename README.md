@@ -84,42 +84,53 @@ uv pip install -e .
 .venv/bin/xiaoheihe hot
 ```
 
-## Native signer
+## Signer
 
-原生签名需要自行准备本机研究包，其中包含从你合法持有的 App 安装包中提取的资源和依赖。项目不分发这些文件。
+本仓库不包含签名算法实现。签名器以外部命令方式提供，你需要自行实现或获取。
 
-```bash
-~/.xhh_sdk/bundles/<your-local-bundle-id>
+技术细节和逆向分析请参考 [`blog/signing-implementation.md`](blog/signing-implementation.md)。
+
+外部签名器接受以下命令行参数：
+
+```
+signer <path> <timestamp> <identity> <device> <os-version> <app-version> <imei> <security-code> <security-version>
 ```
 
-编译 signer：
+输出 JSON（stdout 最后一行）：
 
-```bash
-./native/build.sh
-```
-
-可用环境变量覆盖：
-
-- `XIAOHEIHE_NATIVE_BUNDLE`
-- `XIAOHEIHE_NATIVE_CLASSES`
-- `XIAOHEIHE_NATIVE_JAVA`
-- `XIAOHEIHE_NATIVE_SIGNER=0` 关闭原生签名并回退 Web
-- `XIAOHEIHE_NATIVE_IDENTITY`
-- `XIAOHEIHE_NATIVE_DEVICE`
-- `XIAOHEIHE_NATIVE_OS_VERSION`
-以上参数也可写入 `~/.xiaoheihe-mcp/config.json`：
 ```json
 {
+  "path": "/api/endpoint/",
+  "_time": "1700000000",
+  "nonce": "随机32字符",
+  "hkey": "8位签名",
+  "_rnd": "前缀:签名值"
+}
+```
+
+配置方式（环境变量或 `~/.xiaoheihe-mcp/config.json`）：
+
+```json
+{
+  "signer_command": "/path/to/your/signer",
   "native_signer": true,
-  "native_bundle": "~/.xhh_sdk/bundles/<your-local-bundle-id>",
-  "native_java": "/path/to/java",
   "app_version": "1.3.398",
   "build": "1142",
   "native_identity": "123",
   "native_device": "<device-model>",
-  "native_os_version": "14"
+  "native_os_version": "15"
 }
 ```
+
+环境变量：
+
+- `XIAOHEIHE_SIGNER_COMMAND` — 外部签名器路径
+- `XIAOHEIHE_NATIVE_SIGNER=0` — 关闭签名（公开接口回退无签名请求）
+- `XIAOHEIHE_NATIVE_IDENTITY`
+- `XIAOHEIHE_NATIVE_DEVICE`
+- `XIAOHEIHE_NATIVE_OS_VERSION`
+- `XIAOHEIHE_SECURITY_CODE`
+- `XIAOHEIHE_SECURITY_VERSION`
 
 ## 登录
 
@@ -144,7 +155,7 @@ SMS 流程已实现请求加密、签发和提交：
 .venv/bin/xiaoheihe login-code 13800000000 123456
 ```
 
-> 原生签名已按 1.3.398 复现 `hkey` / `_rnd`，并验证 SMS 登录与已登录请求可用。请勿提交或分享 `~/.xiaoheihe-mcp/config.json`。
+> 签名算法的逆向分析和实现细节请参考 [blog/signing-implementation.md](blog/signing-implementation.md)。请勿提交或分享 `~/.xiaoheihe-mcp/config.json`。
 
 ## 配置
 
