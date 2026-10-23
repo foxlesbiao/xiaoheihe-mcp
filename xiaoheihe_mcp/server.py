@@ -391,6 +391,34 @@ async def xiaoheihe_import_har_login(har_path: str) -> str:
 
 
 @mcp.tool()
+async def xiaoheihe_sign_status() -> str:
+    """查询每日签到状态和奖励信息。"""
+    async with XiaoheiheClient(config) as client:
+        return _json(await client.sign_status())
+
+
+@mcp.tool()
+async def xiaoheihe_sign() -> str:
+    """执行每日签到，领取H币和经验奖励。"""
+    async with XiaoheiheClient(config) as client:
+        return _json(await client.sign())
+
+
+@mcp.tool()
+async def xiaoheihe_sign_list() -> str:
+    """获取本月签到日历，查看哪些天已签到。"""
+    async with XiaoheiheClient(config) as client:
+        return _json(await client.sign_list())
+
+
+@mcp.tool()
+async def xiaoheihe_task_list() -> str:
+    """获取每日任务列表和完成状态。"""
+    async with XiaoheiheClient(config) as client:
+        return _json(await client.task_list())
+
+
+@mcp.tool()
 async def xiaoheihe_hot_news(page: int = 1, limit: int = 10) -> str:
     """获取小黑盒热点新闻列表。
 
